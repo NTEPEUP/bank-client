@@ -52,11 +52,12 @@ apiClient.interceptors.response.use(
 
     const status = error.response?.status
     const currentPath = window.location.pathname
+    const skipSessionAlert = Boolean(error.config?.skipSessionExpiredAlert)
 
     // 401: Token expirado o inválido - REDIRIGIR A LOGIN
     if (status === 401) {
-      // Solo redirigir si no estamos ya en login
-      if (currentPath !== '/login' && currentPath !== '/') {
+      // Solo redirigir si no estamos ya en login y la petición no pidió manejo local
+      if (!skipSessionAlert && currentPath !== '/login' && currentPath !== '/') {
         console.warn('🔒 Token inválido o expirado')
         // Limpiar ambos storages
         sessionStorage.removeItem('token')
@@ -96,3 +97,5 @@ export const authAPI = {
     return user ? JSON.parse(user) : null
   },
 }
+
+export { apiClient }

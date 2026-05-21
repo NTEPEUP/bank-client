@@ -58,6 +58,7 @@ export function useAuthStore() {
       roleName: payload.roleName,
       nombres: payload.nombres,
       apellidos: payload.apellidos,
+      idCliente: payload.idCliente ?? payload.clienteId ?? payload.id ?? null,
       username: credentials.username,
     }
 

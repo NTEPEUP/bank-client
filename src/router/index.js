@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import Dashboard from '../views/Dashboard.vue'
+import Perfil360View from '../views/Perfil360View.vue'
 import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
@@ -10,6 +11,12 @@ const router = createRouter({
       path: '/',
       name: 'login',
       component: LoginView,
+    },
+    {
+      path: '/perfil-360',
+      name: 'perfil360',
+      component: Perfil360View,
+      meta: { requiresAuth: true },
     },
     {
       path: '/panel',
