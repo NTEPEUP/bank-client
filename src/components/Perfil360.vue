@@ -41,6 +41,8 @@ const ajenaValidation = ref({
 const ajenaTokenStep = ref({
     loading: false,
     sent: false,
+    tokenId: '',
+    expiresAt: '',
     message: '',
 })
 
@@ -119,12 +121,12 @@ function selectCuenta(cuenta) {
     transferenciasAjenas.value.comentario = ''
     transferenciasAjenas.value.tokenCorreo = ''
     ajenaValidation.value = { loading: false, validated: false, data: null, message: '' }
-    ajenaTokenStep.value = { loading: false, sent: false, message: '' }
+    ajenaTokenStep.value = { loading: false, sent: false, tokenId: '', expiresAt: '', message: '' }
 }
 
 function limpiarValidacionAjena() {
     ajenaValidation.value = { loading: false, validated: false, data: null, message: '' }
-    ajenaTokenStep.value = { loading: false, sent: false, message: '' }
+    ajenaTokenStep.value = { loading: false, sent: false, tokenId: '', expiresAt: '', message: '' }
     transferenciasAjenas.value.tokenCorreo = ''
 }
 
@@ -157,8 +159,7 @@ async function validarCuentaAjena() {
         ajenaValidation.value.validated = true
         ajenaValidation.value.data = response.data || null
         ajenaValidation.value.message = 'Cuenta validada correctamente. Ahora puedes continuar con el envío del token.'
-        ajenaTokenStep.value.sent = false
-        ajenaTokenStep.value.message = ''
+        ajenaTokenStep.value = { loading: false, sent: false, tokenId: '', expiresAt: '', message: '' }
     } catch (e) {
         ajenaValidation.value.message = e?.response?.status === 401
             ? 'No fue posible validar la cuenta destino. Verifica tu sesión e inténtalo de nuevo.'
@@ -168,7 +169,7 @@ async function validarCuentaAjena() {
     }
 }
 
-async function solicitarTokenAjena() {
+async function iniciarTransferenciaAjena() {
     if (!selectedCuenta.value) {
         ajenaTokenStep.value.message = 'Selecciona una cuenta origen primero.'
         return
@@ -183,15 +184,27 @@ async function solicitarTokenAjena() {
     ajenaTokenStep.value.message = ''
 
     try {
-        await apiClient.post('/transferencias/ajenas/token', {
+        const numeroCuentaOrigen = selectedCuenta.value.numeroCuenta ?? selectedCuenta.value.id
+        const numeroCuentaDestino = (transferenciasAjenas.value.cuentaDestino || '').trim()
+
+        const response = await apiClient.post('/transacciones/transferencia', {
             idCliente: idCliente.value,
-            idCuentaOrigen: selectedCuenta.value.idCuenta ?? selectedCuenta.value.id,
-            numeroCuentaDestino: transferenciasAjenas.value.cuentaDestino,
-            correoDestino: correoCliente.value,
+            cuentaOrigen: numeroCuentaOrigen,
+            cuentaDestino: numeroCuentaDestino,
+            monto: transferenciasAjenas.value.monto,
+            descripcion: transferenciasAjenas.value.comentario,
         }, { skipSessionExpiredAlert: true })
 
-        ajenaTokenStep.value.sent = true
-        ajenaTokenStep.value.message = 'Te enviamos un token al correo. Ingresa el código para continuar.'
+        if (response.status === 202 && response.data?.tokenId) {
+            ajenaTokenStep.value.sent = true
+            ajenaTokenStep.value.tokenId = response.data.tokenId
+            ajenaTokenStep.value.expiresAt = response.data.expiresAt || ''
+            ajenaTokenStep.value.message = response.data?.message || 'Te enviamos un token al correo. Ingresa el código para confirmar.'
+            foreignTransferMessage.value = ''
+            return
+        }
+
+        ajenaTokenStep.value.message = 'No se recibió token para confirmar. Revisa la respuesta del backend.'
     } catch (e) {
         ajenaTokenStep.value.message = e?.response?.data?.message || e.message || 'No fue posible enviar el token.'
     } finally {
@@ -209,12 +222,16 @@ async function enviarTransferenciaPropia() {
     ownTransferMessage.value = ''
 
     try {
-        await apiClient.post('/transferencias/propias', {
+        const numeroCuentaOrigen = selectedCuenta.value.numeroCuenta ?? selectedCuenta.value.id
+        const destino = cuentas.value.find(c => (c.idCuenta ?? c.id) === transferenciasPropias.value.cuentaDestinoId)
+        const numeroCuentaDestino = destino?.numeroCuenta ?? transferenciasPropias.value.cuentaDestinoId
+
+        await apiClient.post('/transacciones/transferencia', {
             idCliente: idCliente.value,
-            idCuentaOrigen: selectedCuenta.value.idCuenta ?? selectedCuenta.value.id,
-            idCuentaDestino: transferenciasPropias.value.cuentaDestinoId,
+            cuentaOrigen: numeroCuentaOrigen,
+            cuentaDestino: numeroCuentaDestino,
             monto: transferenciasPropias.value.monto,
-            comentario: transferenciasPropias.value.comentario,
+            descripcion: transferenciasPropias.value.comentario,
         })
 
         ownTransferMessage.value = 'Transferencia propia enviada correctamente.'
@@ -249,8 +266,8 @@ async function enviarTransferenciaAjena() {
         return
     }
 
-    if (!transferenciasAjenas.value.comentario) {
-        foreignTransferMessage.value = 'El comentario es obligatorio.'
+    if (!ajenaTokenStep.value.tokenId) {
+        foreignTransferMessage.value = 'No hay tokenId pendiente. Inicia la transferencia nuevamente.'
         return
     }
 
@@ -258,22 +275,20 @@ async function enviarTransferenciaAjena() {
     foreignTransferMessage.value = ''
 
     try {
-        await apiClient.post('/transferencias/ajenas', {
-            idCliente: idCliente.value,
-            idCuentaOrigen: selectedCuenta.value.idCuenta ?? selectedCuenta.value.id,
-            numeroCuentaDestino: transferenciasAjenas.value.cuentaDestino,
-            monto: transferenciasAjenas.value.monto,
-            comentario: transferenciasAjenas.value.comentario,
+        const response = await apiClient.post('/transacciones/confirmar', {
+            tokenId: ajenaTokenStep.value.tokenId,
             token: transferenciasAjenas.value.tokenCorreo,
         }, { skipSessionExpiredAlert: true })
 
-        foreignTransferMessage.value = 'Transferencia a cuenta ajena enviada correctamente.'
+        foreignTransferMessage.value = typeof response.data === 'string'
+            ? response.data
+            : response.data?.message || 'Transferencia ejecutada correctamente.'
         transferenciasAjenas.value.cuentaDestino = ''
         transferenciasAjenas.value.monto = ''
         transferenciasAjenas.value.comentario = ''
         transferenciasAjenas.value.tokenCorreo = ''
         ajenaValidation.value = { loading: false, validated: false, data: null, message: '' }
-        ajenaTokenStep.value = { loading: false, sent: false, message: '' }
+        ajenaTokenStep.value = { loading: false, sent: false, tokenId: '', expiresAt: '', message: '' }
     } catch (e) {
         foreignTransferMessage.value = e?.response?.status === 401
             ? 'Tu sesión ya no es válida. Vuelve a iniciar sesión para continuar.'
@@ -475,14 +490,15 @@ onMounted(fetchAll)
                                             <v-col cols="12" v-if="ajenaValidation.validated">
                                                 <div class="token-box token-box--step">
                                                     <div>
-                                                        <div class="token-box__title">Siguiente: enviar token al correo
+                                                        <div class="token-box__title">Paso 2: Iniciar transferencia
                                                         </div>
-                                                        <div class="product-meta">Ahora solicita el token de validación
-                                                            para autorizar la transferencia ajena.</div>
+                                                        <div class="product-meta">El backend enviará el token al correo
+                                                            y devolverá
+                                                            un tokenId para confirmar en el siguiente paso.</div>
                                                     </div>
                                                     <v-btn variant="tonal" color="primary" :loading="requestingToken"
-                                                        @click="solicitarTokenAjena">
-                                                        Siguiente: enviar token
+                                                        @click="iniciarTransferenciaAjena">
+                                                        Iniciar y enviar token
                                                     </v-btn>
                                                 </div>
                                             </v-col>
@@ -498,13 +514,17 @@ onMounted(fetchAll)
                                                 <v-text-field v-model="transferenciasAjenas.tokenCorreo"
                                                     label="Token recibido por correo" variant="outlined" />
                                             </v-col>
+
+                                            <v-col cols="12" v-if="ajenaTokenStep.sent && ajenaTokenStep.expiresAt">
+                                                <div class="product-meta">Expira: {{ ajenaTokenStep.expiresAt }}</div>
+                                            </v-col>
                                         </v-row>
 
                                         <div class="transfer-actions">
                                             <v-btn color="primary" :loading="sendingAjena"
                                                 :disabled="!ajenaValidation.validated || !ajenaTokenStep.sent"
                                                 @click="enviarTransferenciaAjena">
-                                                Transferir
+                                                Confirmar transferencia
                                             </v-btn>
                                         </div>
 
