@@ -156,6 +156,24 @@ function normalizarCuentas(data) {
   return Array.isArray(data) ? data : []
 }
 
+async function fetchOptionalCollection(path) {
+  try {
+    const response = await apiClient.get(path, {
+      skipSessionExpiredAlert: true,
+    })
+
+    return normalizarCuentas(response.data)
+  } catch (error) {
+    const status = error?.response?.status
+
+    if (status === 401 || status === 404) {
+      return []
+    }
+
+    throw error
+  }
+}
+
 async function fetchAll() {
   if (!idCliente.value) {
     error.value = 'No se encontró idCliente en la sesión.'
@@ -165,19 +183,19 @@ async function fetchAll() {
   loading.value = true
   error.value = null
   try {
-    const [cRes, pRes, tRes, clienteRes, reclamosRes] = await Promise.all([
-      apiClient.get(`/cuentas/cliente/${idCliente.value}`),
-      apiClient.get(`/prestamos/cliente/${idCliente.value}`),
-      apiClient.get(`/tarjetas/cliente/${idCliente.value}`),
+    const [cuentasData, prestamosData, tarjetasData, clienteRes, reclamosData] = await Promise.all([
+      fetchOptionalCollection(`/cuentas/cliente/${idCliente.value}`),
+      fetchOptionalCollection(`/prestamos/cliente/${idCliente.value}`),
+      fetchOptionalCollection(`/tarjetas/cliente/${idCliente.value}`),
       apiClient.get(`/clientes/${idCliente.value}`),
-      apiClient.get(`/reclamos/cliente/${idCliente.value}`),
+      fetchOptionalCollection(`/reclamos/cliente/${idCliente.value}`),
     ])
 
-    cuentas.value = normalizarCuentas(cRes.data)
-    prestamos.value = normalizarCuentas(pRes.data)
-    tarjetas.value = normalizarCuentas(tRes.data)
+    cuentas.value = cuentasData
+    prestamos.value = prestamosData
+    tarjetas.value = tarjetasData
     cliente.value = clienteRes.data || null
-    reclamos.value = normalizarCuentas(reclamosRes.data)
+    reclamos.value = reclamosData
 
     if (!reclamoForm.value.categoria) {
       reclamoForm.value.categoria = categoriaItems[0].value
@@ -234,15 +252,17 @@ async function validarCuentaAjena() {
     const response = await apiClient.get(
       `/cuentas/validar/${encodeURIComponent(numeroCuenta)}`,
       {
-        idCliente: idCliente.value,
-        idCuentaOrigen: selectedCuenta.value.idCuenta ?? selectedCuenta.value.id,
-        numeroCuenta,
-        tipoCuenta: 'AHORRO',
-        nombreCliente:
-          cliente.value?.nombres ||
-          `${user.value.nombres || ''} ${user.value.apellidos || ''}`.trim(),
+        params: {
+          idCliente: idCliente.value,
+          idCuentaOrigen: selectedCuenta.value.idCuenta ?? selectedCuenta.value.id,
+          numeroCuenta,
+          tipoCuenta: 'AHORRO',
+          nombreCliente:
+            cliente.value?.nombres ||
+            `${user.value.nombres || ''} ${user.value.apellidos || ''}`.trim(),
+        },
+        skipSessionExpiredAlert: true,
       },
-      { skipSessionExpiredAlert: true },
     )
 
     ajenaValidation.value.validated = true
