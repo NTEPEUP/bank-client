@@ -12,14 +12,46 @@ const apiClient = axios.create({
   withCredentials: false,
 })
 
+function readAuthToken(storage) {
+  if (typeof window === 'undefined' || !storage) {
+    return null
+  }
+
+  const token = storage.getItem('token')
+  if (token) {
+    return token
+  }
+
+  const rawSession = storage.getItem('bank-client-auth')
+  if (!rawSession) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(rawSession)
+    return parsed?.token || null
+  } catch {
+    return null
+  }
+}
+
+function getAuthToken() {
+  return readAuthToken(sessionStorage) || readAuthToken(localStorage)
+}
+
 // Interceptor para agregar el token a todas las peticiones
 apiClient.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem('token')
+    const token = getAuthToken()
     //7//console.log(' Token encontrado:', token ? 'SÍ' : 'NO')
 
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`
+      if (typeof config.headers?.set === 'function') {
+        config.headers.set('Authorization', `Bearer ${token}`)
+      } else {
+        config.headers = config.headers || {}
+        config.headers.Authorization = `Bearer ${token}`
+      }
       //console.log(' Header Authorization agregado')
     } else {
       console.warn(' No se encontró token en ningún storage')
