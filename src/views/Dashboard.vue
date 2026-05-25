@@ -22,7 +22,7 @@ const menuItems = [
         route: 'perfil360',
         highlight: true,
     },
-    {
+    /* {
         title: 'Cuentas',
         subtitle: 'Acceso rápido',
         icon: 'mdi-bank-outline',
@@ -39,7 +39,7 @@ const menuItems = [
         subtitle: 'Gestionar solicitudes',
         icon: 'mdi-alert-circle-outline',
         route: 'perfil360',
-    },
+    }, */
 ]
 
 function goTo(routeName) {
@@ -56,15 +56,15 @@ function handleLogout() {
     <v-app class="dashboard-app">
         <v-navigation-drawer v-model="drawer" permanent class="sidebar" width="290">
             <div class="brand-block">
-                <div class="brand-mark">B</div>
+                <div class="brand-mark">S</div>
                 <div>
-                    <div class="brand-name">BERRY</div>
+                    <div class="brand-name">SHENSEI</div>
                     <div class="brand-caption">Banca digital</div>
                 </div>
             </div>
 
-            <div class="side-section-title">Dashboard</div>
-            <v-list nav dense class="menu-list">
+            <div class="side-section-title">Menú</div>
+            <v-list nav class="menu-list">
                 <v-list-item v-for="item in menuItems" :key="item.title"
                     :class="['menu-item', { 'menu-item-active': item.highlight }]" rounded="lg"
                     @click="goTo(item.route)">
@@ -78,12 +78,12 @@ function handleLogout() {
 
             <v-divider class="my-4" />
 
-            <div class="side-card">
+          <!--   <div class="side-card">
                 <div class="side-card-badge">Cuenta habiente</div>
                 <div class="side-card-title">Acceso rápido</div>
                 <div class="side-card-text">Entra al Perfil 360 para ver cuentas, tarjetas y préstamos.</div>
                 <v-btn class="mt-4" color="primary" block @click="goTo('perfil360')">Ir a Perfil 360</v-btn>
-            </div>
+            </div> -->
         </v-navigation-drawer>
 
         <v-app-bar flat class="topbar">
@@ -109,11 +109,9 @@ function handleLogout() {
                     <v-col cols="12" md="8">
                         <v-card class="hero-card" elevation="0">
                             <div class="hero-kicker">Banca en línea</div>
-                            <h1 class="hero-title">Accede a tu Perfil 360 desde un menú limpio y profesional</h1>
+                            <h1 class="hero-title">Accede a tu Perfil 360</h1>
                             <p class="hero-copy">
-                                Desde aquí puedes entrar a tu vista completa de productos, revisar cuentas y preparar
-                                futuras
-                                acciones como transferencias y reclamos.
+                                Desde aquí puedes entrar a tu vista completa de productos
                             </p>
 
                             <div class="hero-actions">
@@ -125,12 +123,12 @@ function handleLogout() {
                     </v-col>
 
                     <v-col cols="12" md="4">
-                        <v-card class="info-card info-card-accent" elevation="0">
+                     <!--    <v-card class="info-card info-card-accent" elevation="0">
                             <div class="info-label">Estado</div>
                             <div class="info-value">Listo para navegar</div>
                             <div class="info-text">El menú lateral te lleva directo al perfil 360 sin saturar la
                                 pantalla.</div>
-                        </v-card>
+                        </v-card> -->
 
                         <v-card class="info-card mt-4" elevation="0">
                             <div class="info-label">Productos</div>

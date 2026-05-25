@@ -12,7 +12,7 @@ function readSession() {
     return null
   }
 
-  const rawSession = window.localStorage.getItem(STORAGE_KEY)
+  const rawSession = window.sessionStorage.getItem(STORAGE_KEY)
 
   if (!rawSession) {
     return null
@@ -34,17 +34,25 @@ function persistSession(nextSession) {
   }
 
   if (nextSession) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSession))
-    window.localStorage.setItem(TOKEN_KEY, nextSession.token)
-    window.localStorage.setItem(USER_KEY, JSON.stringify(nextSession))
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nextSession))
+    window.sessionStorage.setItem(TOKEN_KEY, nextSession.token)
+    window.sessionStorage.setItem(USER_KEY, JSON.stringify(nextSession))
+    window.localStorage.removeItem(STORAGE_KEY)
+    window.localStorage.removeItem(TOKEN_KEY)
+    window.localStorage.removeItem(USER_KEY)
     return
   }
 
+  window.sessionStorage.removeItem(TOKEN_KEY)
+  window.sessionStorage.removeItem(USER_KEY)
+  window.sessionStorage.removeItem(STORAGE_KEY)
   window.localStorage.removeItem(STORAGE_KEY)
   window.localStorage.removeItem(TOKEN_KEY)
   window.localStorage.removeItem(USER_KEY)
-  window.sessionStorage.removeItem(TOKEN_KEY)
-  window.sessionStorage.removeItem(USER_KEY)
+}
+
+function isClienteRole(roleName) {
+  return String(roleName || '').trim().toUpperCase() === 'CLIENTE'
 }
 
 export function useAuthStore() {
@@ -53,9 +61,16 @@ export function useAuthStore() {
 
   async function login(credentials) {
     const payload = await loginRequest(credentials)
+    const roleName = payload.roleName || payload.role || payload.rol || ''
+
+    if (!isClienteRole(roleName)) {
+      persistSession(null)
+      throw new Error('Solo los clientes pueden ingresar al portal.')
+    }
+
     const nextSession = {
       token: payload.token,
-      roleName: payload.roleName,
+      roleName,
       nombres: payload.nombres,
       apellidos: payload.apellidos,
       idCliente: payload.idCliente ?? payload.clienteId ?? payload.id ?? null,

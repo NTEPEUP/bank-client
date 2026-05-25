@@ -31,6 +31,13 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
+  const roleName = String(auth.currentUser.value?.roleName || '').trim().toUpperCase()
+  const isCliente = roleName === 'CLIENTE'
+
+  if (auth.isAuthenticated.value && !isCliente) {
+    auth.logout()
+    return { name: 'login' }
+  }
 
   if (to.meta.requiresAuth && !auth.isAuthenticated.value) {
     return { name: 'login' }

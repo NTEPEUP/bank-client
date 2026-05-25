@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
@@ -14,6 +14,9 @@ const credentials = reactive({
 const loading = ref(false)
 const error = ref('')
 const showPassword = ref(false)
+const canSubmit = computed(() => {
+    return Boolean(credentials.username.trim() && credentials.password.trim()) && !loading.value
+})
 
 async function handleLogin() {
     error.value = ''
@@ -61,19 +64,20 @@ async function handleLogin() {
                         <input v-model="credentials.password" :type="showPassword ? 'text' : 'password'"
                             placeholder="Ingresa tu contraseña" autocomplete="current-password" :disabled="loading"
                             required />
-                        <V-button @click="showPassword = !showPassword">
+                        <v-btn class="password-toggle" type="button" variant="text"
+                            @click="showPassword = !showPassword">
                             <v-icon>
                                 {{ showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline' }}
                             </v-icon>
-                        </V-button>
+                        </v-btn>
                     </div>
                 </label>
 
                 <div v-if="error" class="error-box">{{ error }}</div>
 
-                <button type="submit" class="submit-btn" :disabled="loading">
+                <button type="submit" class="submit-btn" :disabled="!canSubmit">
                     <span v-if="loading" class="spinner"></span>
-                    <span v-else>INICIAR SESIÓN</span>
+                    <span v-else>Acceder</span>
                 </button>
             </form>
         </section>
@@ -200,15 +204,15 @@ async function handleLogin() {
 }
 
 .password-row {
+    position: relative;
     display: flex;
-    gap: 0.75rem;
+    align-items: center;
 }
 
 .password-row input {
-    padding-right: 0.5rem;
+    padding-right: 3.5rem;
 }
 
-.toggle-btn,
 .submit-btn {
     border: none;
     border-radius: 14px;
@@ -216,11 +220,16 @@ async function handleLogin() {
     cursor: pointer;
 }
 
-.toggle-btn {
-    padding: 0 1rem;
-    background: rgba(6, 57, 108, 0.08);
+.password-toggle {
+    position: absolute;
+    right: 0.35rem;
+    top: 50%;
+    transform: translateY(-50%);
+    min-width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 999px;
     color: #06396c;
-    flex-shrink: 0;
+    background: rgba(6, 57, 108, 0.08);
 }
 
 .error-box {
@@ -241,7 +250,7 @@ async function handleLogin() {
 }
 
 .submit-btn:disabled,
-.toggle-btn:disabled {
+.password-toggle:disabled {
     cursor: not-allowed;
     opacity: 0.7;
 }

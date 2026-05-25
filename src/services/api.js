@@ -15,20 +15,19 @@ const apiClient = axios.create({
 // Interceptor para agregar el token a todas las peticiones
 apiClient.interceptors.request.use(
   (config) => {
-    // Buscar token primero en sessionStorage, luego en localStorage
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token')
-    //7//console.log('🔑 Token encontrado:', token ? 'SÍ' : 'NO')
+    const token = sessionStorage.getItem('token')
+    //7//console.log(' Token encontrado:', token ? 'SÍ' : 'NO')
 
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
-      //console.log('✅ Header Authorization agregado')
+      //console.log(' Header Authorization agregado')
     } else {
-      console.warn('⚠️ No se encontró token en ningún storage')
+      console.warn(' No se encontró token en ningún storage')
     }
     return config
   },
   (error) => {
-    console.error('❌ Error en interceptor request:', error)
+    console.error(' Error en interceptor request:', error)
     return Promise.reject(error)
   },
 )
@@ -58,24 +57,26 @@ apiClient.interceptors.response.use(
     if (status === 401) {
       // Solo redirigir si no estamos ya en login y la petición no pidió manejo local
       if (!skipSessionAlert && currentPath !== '/login' && currentPath !== '/') {
-        console.warn('🔒 Token inválido o expirado')
+        console.warn('Token inválido o expirado')
         // Limpiar ambos storages
         sessionStorage.removeItem('token')
         sessionStorage.removeItem('user')
+        sessionStorage.removeItem('bank-client-auth')
         sessionStorage.removeItem('lastActivityTime')
         localStorage.removeItem('token')
         localStorage.removeItem('user')
+        localStorage.removeItem('bank-client-auth')
         localStorage.removeItem('lastActivityTime')
 
         // Mostrar mensaje antes de redirigir
-        alert('⚠️ Tu sesión ha expirado. Por favor inicia sesión nuevamente.')
+        alert('Tu sesión ha expirado. Por favor inicia sesión nuevamente.')
         window.location.href = '/login'
       }
     }
 
     // 403: Sin permisos - NO REDIRIGIR, dejar que el componente maneje el error
     if (status === 403) {
-      console.warn('⚠️ Acceso denegado: no tienes permisos para este recurso')
+      console.warn('Acceso denegado: no tienes permisos para este recurso')
       // No mostrar alert ni redirigir, simplemente rechazar la promesa
       // El componente individual puede manejar este error como desee
     }
@@ -89,11 +90,15 @@ export const authAPI = {
   login: (credentials) => apiClient.post('/auth/login', credentials),
   register: (userData) => apiClient.post('/auth/register', userData),
   logout: () => {
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
+    sessionStorage.removeItem('bank-client-auth')
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    localStorage.removeItem('bank-client-auth')
   },
   getCurrentUser: () => {
-    const user = localStorage.getItem('user')
+    const user = sessionStorage.getItem('user')
     return user ? JSON.parse(user) : null
   },
 }
